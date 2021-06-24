@@ -199,6 +199,9 @@ Attribute ComputeConstPropElementwiseUnary<ONNXNegOp>(
 template <>
 Attribute ComputeConstPropElementwiseUnary<ONNXSqrtOp>(
     Builder &builder, Type elementType, Attribute attr);
+template <>
+Attribute ComputeConstPropElementwiseUnary<ONNXCastOp>(
+    Builder &builder, Type elementType, Attribute attr);
 
 DenseElementsAttr ConstPropTranspose(
     Builder &builder, Value resOperand, Attribute attr, ArrayAttr permAttr);
@@ -211,3 +214,5 @@ DenseElementsAttr ConstPropConcat(
 DenseElementsAttr ConstPropSlice(Builder &builder, Value resOperand,
     Attribute data, Attribute starts, Attribute ends, Attribute axes,
     Attribute steps);
+DenseElementsAttr ConstPropCast(
+    Builder &builder, Value resOperand, Attribute input, IntegerAttr toType);
