@@ -215,6 +215,116 @@ DenseElementsAttr ConstPropSqueeze(
 }
 
 //===----------------------------------------------------------------------===//
+// Code to perform constant propagation for gather.
+//===----------------------------------------------------------------------===//
+
+// Assume input(data) is a rank r and indices is a rank q tesor.
+// input[i_0 x i_1 x ... x i_r-1] indices[j_0 x j_1 x j_q-1]
+// The result rank is q + (r-1). result shape is determined by replacing element
+// "axis" of the input shape with indices shape. For example for axis = 3 the
+// result shape would be:
+// res [i_0 x i_1 x i_2 x j_0 x j_1 x ... j_q-1 x i_4 x i_5 x ... x i_r-1]
+//
+//               axis ────┐                   ┌─── axis + q
+//                        ▼                   ▼
+//                        ┌───────────────────┐
+// Res [ k_0 x k_1 x ... x│k_i0 x ... x k_iq-1│x ... x k_r]
+//                        └────────┬──────────┘
+//                                 │
+//                                 │ Replace with:
+//                                 │
+//                                 │ K = indices[k_i0 x ... x k_iq-1]
+//                                 ▼
+//                                ┌─┐
+//      = input [k_0 x k_1 x ... x│K│x ...x k_r]
+//                                └─┘
+
+DenseElementsAttr ConstPropGather(
+    Builder &builder, Value resOperand, Attribute data,
+    Attribute indices, int64_t axis) {
+  typedef SmallVector<uint64_t, 4> TensorShape;
+  DenseElementsAttr inputAttr = data.dyn_cast_or_null<mlir::DenseElementsAttr>();
+  assert(inputAttr && "expected dense attribute");
+  DenseElementsAttr indicesAttr =
+      indices.dyn_cast_or_null<mlir::DenseElementsAttr>();
+  assert(indicesAttr && "expected dense attribute");
+
+  ShapedType resType = resOperand.getType().cast<RankedTensorType>();
+  std::vector<Attribute> resVector;
+
+  auto inputShape = data.getType().cast<RankedTensorType>().getShape();
+  auto indicesShape = indices.getType().cast<RankedTensorType>().getShape();
+  auto resShape = resType.getShape();
+  int nResElements = resType.getNumElements();
+
+  // Given element at location "index" in a tensor with shape "shape", proceed
+  // to the next element (in flat represention) by updating the "index"
+  auto proceed = [] (TensorShape &index, const ArrayRef<long> &shape) {
+    assert(index.size() == shape.size());
+    if (shape.size() == 0)
+      return;
+    int dim = shape.size() - 1;
+    index[dim]++;
+    while(dim > 0) {
+      if (index[dim] >= shape[dim]) {
+        index[dim] = 0;
+        index[dim - 1]++;
+      }
+      else
+        break;
+      dim--;
+    }
+  };
+
+  // Return the index of an element in the flat represention of a tensor
+  auto flatten = [] (const TensorShape &index, const ArrayRef<long> &shape) {
+      assert(index.size() == shape.size());
+      int dim = shape.size() - 1;
+      int res = 0;
+      int mul = 1;
+      while(dim >= 0) {
+        res += (mul * index[dim]);
+        mul *= shape[dim];
+        dim--;
+      }
+      return res;
+  };
+
+  std::vector<Attribute> indicesVector;
+  for (auto elem : indicesAttr.getValues<Attribute>())
+    indicesVector.push_back(elem);
+  std::vector<Attribute> inputVector;
+  for (auto elem : inputAttr.getValues<Attribute>())
+    inputVector.push_back(elem);
+
+  TensorShape resIndex(resShape.size(), 0);
+  // Traverse all result elements
+  for (int resFlatIndex = 0; resFlatIndex < nResElements; resFlatIndex++) {
+    // Extract the indices location base on axis
+    TensorShape indicesIndex(resIndex.begin() + axis,
+               resIndex.begin() + axis + indicesShape.size());
+    int flattenIndicesIndex = flatten(indicesIndex, indicesShape);
+    // K is result of look up from indices tensor
+    int k = indicesVector[flattenIndicesIndex].cast<IntegerAttr>().getInt();
+
+    // Create a new tensor shape by replacing indices location with K
+    TensorShape inputIndex(resIndex.begin(),
+               resIndex.begin() + axis);
+    inputIndex.push_back(k);
+    inputIndex.insert(inputIndex.end(), resIndex.begin() + axis + indicesShape.size(), resIndex.end());
+
+    // Look up the input and add to the result tensor
+    int flattenInputIndex = flatten(inputIndex, inputShape);
+    resVector.emplace_back(inputVector[flattenInputIndex]);
+
+    // Proceed to the next output
+    proceed(resIndex, resShape);
+  }
+  ArrayRef<Attribute> resRef(resVector);
+  return DenseElementsAttr::get(resType, resRef);
+}
+
+//===----------------------------------------------------------------------===//
 // Code to perform constant propagation for concat.
 //===----------------------------------------------------------------------===//
 DenseElementsAttr ConstPropConcat(

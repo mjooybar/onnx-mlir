@@ -2897,6 +2897,19 @@ LogicalResult ONNXGatherOp::inferShapes() {
   return success();
 }
 
+void ONNXGatherOp::tryFold() {
+  auto dataAttr = getONNXConstOrShapeFoldingAttr(data());
+  auto indicesAttr = getONNXConstOrShapeFoldingAttr(indices());
+  if (!dataAttr || !indicesAttr)
+    return;
+
+  Builder builder(getContext());
+  if (auto resultAttr = ConstPropGather(
+          builder, getResult(), dataAttr, indicesAttr, axis())) {
+    setShapeFoldingAttr(getOperation(), resultAttr);
+  }
+}
+
 //===----------------------------------------------------------------------===//
 // ConstantOfShape
 //===----------------------------------------------------------------------===//
