@@ -82,7 +82,7 @@ def ONNXAcoshOp:ONNX_Op<"Acosh",
 }
 
 def ONNXAddOp:ONNX_Op<"Add",
-  [NoSideEffect, DeclareOpInterfaceMethods<ShapeInferenceOpInterface>]> {
+  [NoSideEffect, DeclareOpInterfaceMethods<ShapeInferenceOpInterface>, DeclareOpInterfaceMethods<FoldOpInterface>]> {
   let hasCanonicalizer = 1;
   let summary = "ONNX Add operation";
   let description = [{
@@ -671,7 +671,7 @@ def ONNXConstantOp:ONNX_Op<"Constant",
 }
 
 def ONNXConstantOfShapeOp:ONNX_Op<"ConstantOfShape",
-  [NoSideEffect, DeclareOpInterfaceMethods<ShapeInferenceOpInterface>, OpInterface<"ResultTypeInferenceOpInterface">]> {
+  [NoSideEffect, DeclareOpInterfaceMethods<ShapeInferenceOpInterface>, DeclareOpInterfaceMethods<FoldOpInterface>, OpInterface<"ResultTypeInferenceOpInterface">]> {
   let summary = "ONNX ConstantOfShape operation";
   let description = [{
   "Generate a tensor with given value and shape."
@@ -3953,7 +3953,7 @@ def ONNXReduceProdOp:ONNX_Op<"ReduceProd",
 }
 
 def ONNXReduceSumOp:ONNX_Op<"ReduceSum",
-  [NoSideEffect, DeclareOpInterfaceMethods<ShapeInferenceOpInterface>]> {
+  [NoSideEffect, DeclareOpInterfaceMethods<ShapeInferenceOpInterface>, DeclareOpInterfaceMethods<FoldOpInterface>]> {
   let summary = "ONNX ReduceSum operation";
   let description = [{
   "Computes the sum of the input tensor's element along the provided axes. The resulted"
@@ -4033,7 +4033,7 @@ def ONNXReduceSumSquareOp:ONNX_Op<"ReduceSumSquare",
 }
 
 def ONNXReluOp:ONNX_Op<"Relu",
-  [NoSideEffect, DeclareOpInterfaceMethods<ShapeInferenceOpInterface>]> {
+  [NoSideEffect, DeclareOpInterfaceMethods<ShapeInferenceOpInterface>, DeclareOpInterfaceMethods<FoldOpInterface>]> {
   let summary = "ONNX Relu operation";
   let description = [{
   "Relu takes one input data (Tensor<T>) and produces one output data"
@@ -4056,7 +4056,7 @@ def ONNXReluOp:ONNX_Op<"Relu",
 }
 
 def ONNXReshapeOp:ONNX_Op<"Reshape",
-  [NoSideEffect, DeclareOpInterfaceMethods<ShapeInferenceOpInterface>, OpInterface<"PromotableConstOperandsOpInterface">]> {
+  [NoSideEffect, DeclareOpInterfaceMethods<ShapeInferenceOpInterface>, DeclareOpInterfaceMethods<FoldOpInterface>, OpInterface<"PromotableConstOperandsOpInterface">]> {
   let summary = "ONNX Reshape operation";
   let description = [{
   "Reshape the input tensor similar to numpy.reshape."
@@ -5269,7 +5269,7 @@ def ONNXStringNormalizerOp:ONNX_Op<"StringNormalizer",
 }
 
 def ONNXSubOp:ONNX_Op<"Sub",
-  [NoSideEffect, DeclareOpInterfaceMethods<ShapeInferenceOpInterface>]> {
+  [NoSideEffect, DeclareOpInterfaceMethods<ShapeInferenceOpInterface>, DeclareOpInterfaceMethods<FoldOpInterface>]> {
   let summary = "ONNX Sub operation";
   let description = [{
   "Performs element-wise binary subtraction (with Numpy-style broadcasting support)."
@@ -5530,7 +5530,7 @@ def ONNXTopKOp:ONNX_Op<"TopK",
 }
 
 def ONNXTransposeOp:ONNX_Op<"Transpose",
-  [NoSideEffect, DeclareOpInterfaceMethods<ShapeInferenceOpInterface>]> {
+  [NoSideEffect, DeclareOpInterfaceMethods<ShapeInferenceOpInterface>, DeclareOpInterfaceMethods<FoldOpInterface>]> {
   let hasCanonicalizer = 1;
   let summary = "ONNX Transpose operation";
   let description = [{

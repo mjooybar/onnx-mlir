@@ -210,6 +210,10 @@ DenseElementsAttr ConstPropSqueeze(
     Builder &builder, Value resOperand, Attribute attr);
 DenseElementsAttr ConstPropGather( Builder &builder, Value resOperand,
     Attribute data, Attribute indices, int64_t axis);
+DenseElementsAttr ConstPropConstantOfShape(Builder &builder, Value resOperand,
+    Attribute input, Attribute value);
+DenseElementsAttr ConstPropRelu(Builder &builder, Value resOperand,
+    Attribute input);
 DenseElementsAttr ConstPropConcat(
     Builder &builder, Value resOperand, ArrayRef<Attribute> attrs);
 DenseElementsAttr ConstPropSlice(Builder &builder, Value resOperand,

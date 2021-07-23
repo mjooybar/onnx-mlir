@@ -325,6 +325,54 @@ DenseElementsAttr ConstPropGather(
 }
 
 //===----------------------------------------------------------------------===//
+// Code to perform constant propagation for constantOfShape.
+//===----------------------------------------------------------------------===//
+
+DenseElementsAttr ConstPropConstantOfShape(Builder &builder, Value resOperand,
+    Attribute input, Attribute value) {
+  DenseElementsAttr inputAttr = input.dyn_cast_or_null<mlir::DenseElementsAttr>();
+  assert(inputAttr && "expected dense attribute");
+  DenseElementsAttr valueAttr = value.dyn_cast_or_null<mlir::DenseElementsAttr>();
+  assert(valueAttr && "expected dense attribute");
+  auto resType = resOperand.getType().cast<RankedTensorType>();
+  auto inputShape = input.getType().cast<RankedTensorType>().getShape();
+  auto resShape = resType.getShape();
+  int nResElements = resType.getNumElements();
+  auto element = valueAttr.getValue<Attribute>(0);
+  std::vector<Attribute> resVector(nResElements, element);
+  ArrayRef<Attribute> resRef(resVector);
+  return DenseElementsAttr::get(resType, resRef);
+}
+
+//===----------------------------------------------------------------------===//
+// Code to perform constant propagation for relu.
+//===----------------------------------------------------------------------===//
+DenseElementsAttr ConstPropRelu(
+    Builder &builder, Value resOperand, Attribute input) {
+  DenseElementsAttr inputAttr = input.dyn_cast_or_null<mlir::DenseElementsAttr>();
+  assert(inputAttr && "expected dense attribute");
+  auto resType = resOperand.getType().cast<RankedTensorType>();
+  auto elementType = inputAttr.getType().getElementType();
+  int nResElements = resType.getNumElements();
+  std::vector<Attribute> resVector;
+  
+  for (auto element : inputAttr.getValues<Attribute>()) {
+    if (elementType.isa<FloatType>()) {
+      double value = element.cast<FloatAttr>().getValueAsDouble();
+      Attribute res = builder.getFloatAttr(elementType, value > 0.0 ? value : 0.0);
+      resVector.push_back(res);
+    }
+    // if (resType.isa<IntegerType>()) {
+    //   APInt val = element.cast<IntegerAttr>().getValue();
+    //   APInt res = val > 0 ? val : 0;
+    //   resVector.push_back(builder.getIntegerAttr(resType, res));
+    // }
+  }
+  ArrayRef<Attribute> resRef(resVector);
+  return DenseElementsAttr::get(resType, resRef);
+}
+
+//===----------------------------------------------------------------------===//
 // Code to perform constant propagation for concat.
 //===----------------------------------------------------------------------===//
 DenseElementsAttr ConstPropConcat(
@@ -381,19 +429,29 @@ DenseElementsAttr ConstPropSlice(Builder &builder, Value resOperand,
 
   if (startLocal < 0) {
     startLocal = startLocal + dataSize;
+    if (startLocal < 0)
+      startLocal = 0;
   } else if (startLocal > dataSize) {
     startLocal = dataSize;
   }
   if (endLocal < 0) {
     endLocal = endLocal + dataSize;
+    if (endLocal < 0)
+      endLocal = 0;
   } else if (endLocal > dataSize) {
     endLocal = dataSize;
   }
-  assert(startLocal <= endLocal && axisLocal == 0 && stepLocal == 1 &&
-         "Unsupported slice operation mode");
+  int64_t nElements = resType.getNumElements();
+  assert(((endLocal - startLocal) * stepLocal >= 0) && axisLocal == 0  &&
+    nElements >= 0 && "Unsupported slice operation mode");
 
-  std::vector<Attribute> resVector(dataAttr.attr_value_begin() + startLocal,
-      dataAttr.attr_value_begin() + endLocal);
+  std::vector<Attribute> resVector;
+
+  auto element = dataAttr.attr_value_begin() + startLocal;
+  for (int i = 0; i < nElements; i++) {
+    resVector.emplace_back(*element);
+    element += stepLocal;
+  }
 
   ArrayRef<Attribute> resRef(resVector);
   return DenseElementsAttr::get(resType, resRef);

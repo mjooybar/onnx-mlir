@@ -337,7 +337,15 @@ OpsWithFold = [
     'Shape',
     'Slice',
     'Squeeze',
-    'Unsqueeze'
+    'Unsqueeze',
+    'Add',
+    'Sub',
+    'ConstantOfShape',
+    'Gather',
+    'Reshape',
+    'Transpose',
+    'Relu',
+    'ReduceSum',
 ]
 
 # Operations supporting canonicalization.
